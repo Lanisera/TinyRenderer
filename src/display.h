@@ -1,6 +1,7 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <SDL2/SDL.h>
@@ -16,7 +17,11 @@ extern int window_height;
 
 bool initialize_window(void);
 
+void draw_pixel(int x,int y, uint32_t color);
+
 void draw_grid(uint32_t color);
+
+void draw_rect(int x, int y, int width, int height, uint32_t color);
 
 void render_color_buffer(void);
 
