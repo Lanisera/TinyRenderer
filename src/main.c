@@ -10,7 +10,7 @@
 #include "mesh.h"
 #include "array.h"
 
-vec3_t camera_position = { .x = 0, .y = 0, .z = -5};
+vec3_t camera_position = {0, 0, 0};
 
 triangle_t* triangle_to_render = NULL;
 
@@ -32,7 +32,7 @@ void setup(void)
 			window_height
 	);
 
-	load_obj_mesh_data("./assets/f22.obj");
+	load_obj_mesh_data("./assets/cube.obj");
 }
 
 void process_input(void)
@@ -86,8 +86,8 @@ void update(void)
 	triangle_to_render = NULL;
 
 	mesh.rotation.x += 0.005;
-	mesh.rotation.y += 0.000;
-	mesh.rotation.z += 0.000;
+	mesh.rotation.y += 0.005;
+	mesh.rotation.z += 0.005;
 	
 	int num_face = array_length(mesh.faces);
 	for (int i = 0; i < num_face; i ++) {
@@ -98,17 +98,41 @@ void update(void)
 
 		triangle_t triangle;
 
-		for (int j = 0; j < 3; j ++) {
-			vec3_t translate_point = triangle_point[j];
-			
-			translate_point = vec3_rotate_x(translate_point, mesh.rotation.x);
-			translate_point = vec3_rotate_y(translate_point, mesh.rotation.y);
-			translate_point = vec3_rotate_z(translate_point, mesh.rotation.z);
-			
-			// 计算摄像机距离
-			translate_point.z -= camera_position.z;
+		vec3_t transformed_vertices[3];
 
-			vec2_t projected_point = project(translate_point);
+		// 三角形面片线性变换
+		for (int j = 0; j < 3; j ++) {
+			vec3_t transformed_point = triangle_point[j];
+			
+			transformed_point = vec3_rotate_x(transformed_point, mesh.rotation.x);
+			transformed_point = vec3_rotate_y(transformed_point, mesh.rotation.y);
+			transformed_point = vec3_rotate_z(transformed_point, mesh.rotation.z);
+			
+			// 远离摄像机
+			transformed_point.z += 5;
+
+			transformed_vertices[j] = transformed_point;
+		}
+
+		//TODO:
+		vec3_t vec3_a = transformed_vertices[0]; /*  A  */
+		vec3_t vec3_b = transformed_vertices[1]; /* / \ */
+		vec3_t vec3_c = transformed_vertices[2]; /* B-C */
+
+		vec3_t vec3_ab = vec3_sub(vec3_b, vec3_a);
+		vec3_t vec3_ac = vec3_sub(vec3_c, vec3_a);
+
+		vec3_t normal = vec3_cross(vec3_ab, vec3_ac);
+
+		vec3_t camera_ray = vec3_sub(camera_position, vec3_a);
+
+		float dot = vec3_dot(normal, camera_ray);
+
+		if (dot < 0) continue;
+
+		// 投影变换
+		for (int j = 0; j < 3; j++) {
+			vec2_t projected_point = project(transformed_vertices[j]);
 
 			// 把投影目标移到屏幕中心
 			projected_point.x += window_width / 2;
