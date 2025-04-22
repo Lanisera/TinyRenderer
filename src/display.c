@@ -2,6 +2,9 @@
 #include <math.h>
 #include <stdlib.h>
 
+Cull_Method cull_method;
+Render_Method render_method;
+
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 

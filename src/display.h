@@ -9,6 +9,21 @@
 #define FPS 30
 #define FRAME_TIME_TARGET (1000 / FPS)
 
+typedef enum {
+	CULL_NONE,
+	CULL_BACKFACE
+} Cull_Method;
+
+typedef enum {
+	RENDER_WIRE,
+	RENDER_WIRE_VERTEX,
+	RENDER_FILL_TRIANGLE,
+	RENDER_FILL_TRIANGLE_WIRE
+} Render_Method;
+
+extern Cull_Method cull_method;
+extern Render_Method render_method;
+
 extern SDL_Window* window;
 extern SDL_Renderer* renderer;
 

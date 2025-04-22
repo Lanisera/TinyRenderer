@@ -22,7 +22,9 @@ bool is_running = false;
 
 void setup(void)
 {
-	// TODO:
+	cull_method = CULL_BACKFACE;
+	render_method = RENDER_WIRE;
+
 	color_buffer = (uint32_t*)malloc(window_height * window_width * sizeof(uint32_t));
 	texture_color_buffer = SDL_CreateTexture(
 			renderer,
@@ -32,7 +34,8 @@ void setup(void)
 			window_height
 	);
 
-	load_obj_mesh_data("./assets/cube.obj");
+	load_cube_mesh_data();
+	// load_obj_mesh_data("./assets/cube.obj");
 }
 
 void process_input(void)
@@ -50,6 +53,20 @@ void process_input(void)
 				SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
 			if (event.key.keysym.sym == SDLK_b)
 				SDL_SetWindowFullscreen(window, SDL_WINDOW_BORDERLESS);
+			if (event.key.keysym.sym == SDLK_1)
+				render_method = RENDER_WIRE;
+			if (event.key.keysym.sym == SDLK_2)
+				render_method = RENDER_WIRE_VERTEX;
+			if (event.key.keysym.sym == SDLK_3)
+				render_method = RENDER_FILL_TRIANGLE;
+			if (event.key.keysym.sym == SDLK_4)
+				render_method = RENDER_FILL_TRIANGLE_WIRE;
+			if (event.key.keysym.sym == SDLK_4)
+				render_method = RENDER_FILL_TRIANGLE_WIRE;
+			if (event.key.keysym.sym == SDLK_c)
+				cull_method = CULL_BACKFACE;
+			if (event.key.keysym.sym == SDLK_d)
+				cull_method = CULL_NONE;
 
 			break;
 	}
@@ -96,8 +113,6 @@ void update(void)
 		triangle_point[1] = mesh.vertices[mesh.faces[i].b - 1];
 		triangle_point[2] = mesh.vertices[mesh.faces[i].c - 1];
 
-		triangle_t triangle;
-
 		vec3_t transformed_vertices[3];
 
 		// 三角形面片线性变换
@@ -114,21 +129,25 @@ void update(void)
 			transformed_vertices[j] = transformed_point;
 		}
 
-		//TODO:
-		vec3_t vec3_a = transformed_vertices[0]; /*  A  */
-		vec3_t vec3_b = transformed_vertices[1]; /* / \ */
-		vec3_t vec3_c = transformed_vertices[2]; /* B-C */
+		if (cull_method == CULL_BACKFACE) {
+			vec3_t vec3_a = transformed_vertices[0]; /*  A  */
+			vec3_t vec3_b = transformed_vertices[1]; /* / \ */
+			vec3_t vec3_c = transformed_vertices[2]; /* B-C */
 
-		vec3_t vec3_ab = vec3_sub(vec3_b, vec3_a);
-		vec3_t vec3_ac = vec3_sub(vec3_c, vec3_a);
+			vec3_t vec3_ab = vec3_sub(vec3_b, vec3_a);
+			vec3_t vec3_ac = vec3_sub(vec3_c, vec3_a);
 
-		vec3_t normal = vec3_cross(vec3_ab, vec3_ac);
+			vec3_t normal = vec3_cross(vec3_ab, vec3_ac);
 
-		vec3_t camera_ray = vec3_sub(camera_position, vec3_a);
+			vec3_t camera_ray = vec3_sub(camera_position, vec3_a);
 
-		float dot = vec3_dot(normal, camera_ray);
+			float dot = vec3_dot(normal, camera_ray);
 
-		if (dot < 0) continue;
+			if (dot < 0) continue;
+		}
+
+		triangle_t triangle;
+		triangle.color = mesh.faces[i].color;
 
 		// 投影变换
 		for (int j = 0; j < 3; j++) {
@@ -151,11 +170,28 @@ void render(void) {
 	int num_face = array_length(triangle_to_render);
 	for (int i = 0; i < num_face; i ++) {
 		triangle_t triangle = triangle_to_render[i];
-		draw_triangle(triangle.points[0].x, triangle.points[0].y,
-									triangle.points[1].x, triangle.points[1].y,
-									triangle.points[2].x, triangle.points[2].y,
-									0xFFFFFF00);
+		
+		if (render_method == RENDER_FILL_TRIANGLE || render_method == RENDER_FILL_TRIANGLE_WIRE) {
+			draw_filled_triangle(triangle.points[0].x, triangle.points[0].y,
+										triangle.points[1].x, triangle.points[1].y,
+										triangle.points[2].x, triangle.points[2].y,
+										triangle.color);
+
+		}
+
+		if (render_method == RENDER_WIRE || render_method == RENDER_WIRE_VERTEX || render_method == RENDER_FILL_TRIANGLE_WIRE) {
+			draw_triangle(triangle.points[0].x, triangle.points[0].y,
+										triangle.points[1].x, triangle.points[1].y,
+										triangle.points[2].x, triangle.points[2].y,
+										0xFFFFFFFF);
+
+		}
+
+		if (render_method == RENDER_WIRE_VERTEX) {
+
+		}
 	}
+
 
 	render_color_buffer();
 	clear_color_buffer(0x00000000);
