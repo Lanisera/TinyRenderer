@@ -9,6 +9,7 @@
 #include "vector.h"
 #include "mesh.h"
 #include "array.h"
+#include "matrix.h"
 
 vec3_t camera_position = {0, 0, 0};
 
@@ -86,6 +87,39 @@ vec2_t project(vec3_t point)
 	return projected_point;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////
+/// Helper Function: Merge Sort
+/////////////////////////////////////////////////////////////////////////////////////////
+void merge(triangle_t* arr, int left, int mid, int right)
+{
+	int i = left, j = mid + 1;
+	while (i <= mid && j <= right) {
+		if (arr[i].avg_depth > arr[j].avg_depth) i++;
+		else {
+			triangle_t tmp = arr[j];
+			for (int k = j; k > i; k--) arr[k] = arr[k - 1];
+			arr[i] = tmp;
+
+			i++;
+			mid++;
+			j++;
+		}
+	}
+}
+
+void merge_sort(triangle_t* arr, int left, int right)
+{
+	if (left < right) {
+		int mid = (left + right) / 2;
+		merge_sort(arr, left, mid);
+		
+		merge_sort(arr, mid + 1, right);
+		
+		merge(arr, left, mid, right);
+	}
+
+}
+
 void update(void)
 {
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -105,23 +139,36 @@ void update(void)
 	mesh.rotation.x += 0.005;
 	mesh.rotation.y += 0.005;
 	mesh.rotation.z += 0.005;
+
+	mesh.translation.x += 0.005;
+
+	mat4_t scale_mat = mat4_make_scale(mesh.scale.x, mesh.scale.y, mesh.scale.z);
+	mat4_t rotation_x_mat = mat4_make_rotation_x(mesh.rotation.x);
+	mat4_t rotation_y_mat = mat4_make_rotation_y(mesh.rotation.y);
+	mat4_t rotation_z_mat = mat4_make_rotation_z(mesh.rotation.z);
+	mat4_t translation_mat = mat4_make_translation(mesh.translation.x, mesh.translation.y, mesh.translation.z);
+
+	mat4_t world_matrix = mat4_identity();
+	world_matrix = mat4_mul_mat4(scale_mat, world_matrix);
+	world_matrix = mat4_mul_mat4(rotation_x_mat, world_matrix);
+	world_matrix = mat4_mul_mat4(rotation_y_mat, world_matrix);
+	world_matrix = mat4_mul_mat4(rotation_z_mat, world_matrix);
+	world_matrix = mat4_mul_mat4(translation_mat, world_matrix);
 	
 	int num_face = array_length(mesh.faces);
 	for (int i = 0; i < num_face; i ++) {
-		vec3_t triangle_point[3];
-		triangle_point[0] = mesh.vertices[mesh.faces[i].a - 1];
-		triangle_point[1] = mesh.vertices[mesh.faces[i].b - 1];
-		triangle_point[2] = mesh.vertices[mesh.faces[i].c - 1];
+		vec4_t triangle_point[3];
+		triangle_point[0] = vec4_from_vec3(mesh.vertices[mesh.faces[i].a - 1]);
+		triangle_point[1] = vec4_from_vec3(mesh.vertices[mesh.faces[i].b - 1]);
+		triangle_point[2] = vec4_from_vec3(mesh.vertices[mesh.faces[i].c - 1]);
 
-		vec3_t transformed_vertices[3];
+		vec4_t transformed_vertices[3];
 
 		// 三角形面片线性变换
 		for (int j = 0; j < 3; j ++) {
-			vec3_t transformed_point = triangle_point[j];
+			vec4_t transformed_point = triangle_point[j];
 			
-			transformed_point = vec3_rotate_x(transformed_point, mesh.rotation.x);
-			transformed_point = vec3_rotate_y(transformed_point, mesh.rotation.y);
-			transformed_point = vec3_rotate_z(transformed_point, mesh.rotation.z);
+			transformed_point = mat4_mul_vec4(world_matrix, transformed_point);
 			
 			// 远离摄像机
 			transformed_point.z += 5;
@@ -130,9 +177,9 @@ void update(void)
 		}
 
 		if (cull_method == CULL_BACKFACE) {
-			vec3_t vec3_a = transformed_vertices[0]; /*  A  */
-			vec3_t vec3_b = transformed_vertices[1]; /* / \ */
-			vec3_t vec3_c = transformed_vertices[2]; /* B-C */
+			vec3_t vec3_a = vec3_from_vec4(transformed_vertices[0]); /*  A  */
+			vec3_t vec3_b = vec3_from_vec4(transformed_vertices[1]); /* / \ */
+			vec3_t vec3_c = vec3_from_vec4(transformed_vertices[2]); /* B-C */
 
 			vec3_t vec3_ab = vec3_sub(vec3_b, vec3_a);
 			vec3_t vec3_ac = vec3_sub(vec3_c, vec3_a);
@@ -151,7 +198,7 @@ void update(void)
 
 		// 投影变换
 		for (int j = 0; j < 3; j++) {
-			vec2_t projected_point = project(transformed_vertices[j]);
+			vec2_t projected_point = project(vec3_from_vec4(transformed_vertices[j]));
 
 			// 把投影目标移到屏幕中心
 			projected_point.x += window_width / 2;
@@ -160,8 +207,22 @@ void update(void)
 			triangle.points[j] = projected_point;
 		}
 
+		triangle.avg_depth = (transformed_vertices[0].z + transformed_vertices[1].z + transformed_vertices[2].z) / 3.0;
+
 		array_push(triangle_to_render, triangle);
 	}
+
+	int num_length = array_length(triangle_to_render);
+	merge_sort(triangle_to_render, 0, num_length - 1);
+	// for (int i = 0; i < num_length; i++) {
+	// 	for (int j = i; j < num_length; j++) {
+	// 		if (triangle_to_render[i].avg_depth < triangle_to_render[j].avg_depth) {
+	// 			triangle_t tmp = triangle_to_render[i];
+	// 			triangle_to_render[i] = triangle_to_render[j];
+	// 			triangle_to_render[j] = tmp;
+	// 		}
+	// 	}
+	// }
 }
 
 void render(void) {

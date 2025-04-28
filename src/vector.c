@@ -129,3 +129,27 @@ vec3_t vec3_rotate_z(vec3_t v, float angle)
 	};
 	return rotate_vec;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////
+/// vector conversion function
+/////////////////////////////////////////////////////////////////////////////////////////
+vec4_t vec4_from_vec3(vec3_t v) {
+	vec4_t vec4 = {
+		.x = v.x,
+		.y = v.y,
+		.z = v.z,
+		.w = 1.0
+	};
+	return vec4;
+}
+
+vec3_t vec3_from_vec4(vec4_t v) {
+	vec3_t vec3 = {
+		.x = v.x,
+		.y = v.y,
+		.z = v.z
+	};
+
+	return vec3;
+}
+
